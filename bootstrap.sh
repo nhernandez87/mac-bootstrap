@@ -58,4 +58,14 @@ bash install.sh --full
 say "6/6  Restaurando .env de los jobs"
 bash restore-env.sh || true
 
-say "LISTO. Reinicia la terminal (exec zsh) y verifica."
+say "Verificacion final"
+command -v starship >/dev/null 2>&1 && echo "  ok: starship (prompt)"      || echo "  FALTA: starship"
+command -v op       >/dev/null 2>&1 && echo "  ok: op (1password cli)"      || echo "  FALTA: op"
+command -v gh       >/dev/null 2>&1 && echo "  ok: gh"                        || echo "  FALTA: gh"
+[ -d "$HOME/.oh-my-zsh" ]           && echo "  ok: oh-my-zsh"                 || echo "  FALTA: oh-my-zsh"
+ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -T git@github-nhernandez 2>&1 | grep -q "successfully authenticated" \
+                                    && echo "  ok: github ssh"                || echo "  revisar: github ssh"
+[ -d "$HOME/repos/naguer/second-brain" ] && echo "  ok: repos clonados"       || echo "  FALTA: repos"
+echo "  PENDIENTE MANUAL: instalar pCloud (pcloud.com)"
+
+say "LISTO. Reinicia la terminal (exec zsh)."

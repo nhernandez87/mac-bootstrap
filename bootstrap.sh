@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Bootstrap de una Mac limpia. Uso:
-#   curl -fsSL https://raw.githubusercontent.com/nhernandez87/mac-bootstrap/main/bootstrap.sh | bash
+# Bootstrap de una Mac limpia. Uso (bajar a archivo y correr, NO 'curl | bash':
+# el instalador de Homebrew se come el stdin del pipe y trunca el script):
+#   curl -fsSL https://raw.githubusercontent.com/nhernandez87/mac-bootstrap/main/bootstrap.sh -o ~/bootstrap.sh && bash ~/bootstrap.sh
 #
 # Unico requisito: tener a mano el Emergency Kit de 1Password (Secret Key) para el login.
 # El resto (SSH keys, dotfiles, config, repos, .env) sale de 1Password + git automaticamente.
@@ -9,8 +10,8 @@ set -euo pipefail
 say(){ printf "\n\033[1;36m==> %s\033[0m\n" "$*"; }
 
 say "1/6  Homebrew"
-if ! command -v brew >/dev/null 2>&1; then
-  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+if [ ! -x /opt/homebrew/bin/brew ]; then
+  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" </dev/null
 fi
 eval "$(/opt/homebrew/bin/brew shellenv)"
 

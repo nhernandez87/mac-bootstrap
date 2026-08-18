@@ -16,8 +16,9 @@ fi
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
 say "2/6  1Password + CLI + git"
-brew install --cask 1password >/dev/null 2>&1 || true
-brew install 1password-cli git >/dev/null 2>&1 || true
+[ -d /Applications/1Password.app ] || brew install --cask 1password >/dev/null 2>&1 || true
+command -v op  >/dev/null 2>&1 || brew install 1password-cli >/dev/null 2>&1 || true
+command -v git >/dev/null 2>&1 || brew install git >/dev/null 2>&1 || true
 
 say "3/6  Login 1Password  (ACCION MANUAL)"
 cat <<'MSG'
@@ -29,17 +30,21 @@ MSG
 read -r _ </dev/tty
 
 say "4/6  Restaurando SSH keys desde 1Password"
-mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
-op document list --vault Private 2>/dev/null | awk 'NR>1 && $2 ~ /^ssh-/ {print $2}' | while read -r doc; do
-  name="${doc#ssh-}"
-  if [ "$name" = "config" ]; then out="$HOME/.ssh/config"; else out="$HOME/.ssh/$name"; fi
-  op document get "$doc" --vault Private --out-file "$out" --force
-  if [ "$name" != "config" ]; then
-    chmod 600 "$out"
-    ssh-keygen -y -f "$out" > "$out.pub" 2>/dev/null || true
-  fi
-  echo "  restored: $doc"
-done
+if [ -f "$HOME/.ssh/github-nhernandez" ] && [ -f "$HOME/.ssh/config" ]; then
+  echo "  ya restauradas, skip"
+else
+  mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+  op document list --vault Private 2>/dev/null | awk 'NR>1 && $2 ~ /^ssh-/ {print $2}' | while read -r doc; do
+    name="${doc#ssh-}"
+    if [ "$name" = "config" ]; then out="$HOME/.ssh/config"; else out="$HOME/.ssh/$name"; fi
+    op document get "$doc" --vault Private --out-file "$out" --force
+    if [ "$name" != "config" ]; then
+      chmod 600 "$out"
+      ssh-keygen -y -f "$out" > "$out.pub" 2>/dev/null || true
+    fi
+    echo "  restored: $doc"
+  done
+fi
 echo "  test github:"; ssh -o StrictHostKeyChecking=accept-new -T git@github-nhernandez 2>&1 | head -1 || true
 
 say "5/6  Clonando dotfiles + install --full"

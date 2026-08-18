@@ -51,7 +51,7 @@ say "5/6  Clonando dotfiles + install --full"
 mkdir -p "$HOME/repos/naguer"
 # usar el alias github-nhernandez (del ~/.ssh/config restaurado) para forzar la key
 # personal: con 'git@github.com' pelado + 4 cuentas, GitHub da 404 en el repo privado.
-[ -d "$HOME/repos/naguer/bootstrap/.git" ] || git clone git@github-nhernandez:nhernandez87/dotfiles.git "$HOME/repos/naguer/bootstrap"
+[ -d "$HOME/repos/naguer/bootstrap/.git" ] || GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" git clone git@github-nhernandez:nhernandez87/dotfiles.git "$HOME/repos/naguer/bootstrap"
 cd "$HOME/repos/naguer/bootstrap"
 bash install.sh --full
 

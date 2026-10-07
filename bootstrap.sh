@@ -71,9 +71,18 @@ else
     echo "  restored: $doc"
   done
 fi
+# authorized_keys viaja con las demas: sin esto una Mac recien reconstruida no acepta SSH de
+# nucleus hasta que alguien pega una clave publica a mano, que es justo el paso manual que este
+# script existe para borrar. No es un secreto (son claves PUBLICAS), pero vive en 1Password
+# porque es la lista de quien puede entrar.
+if op document get ssh-authorized_keys --vault Private --out-file "$HOME/.ssh/authorized_keys" --force >/dev/null 2>&1; then
+  chmod 600 "$HOME/.ssh/authorized_keys"; echo "  restored: ssh-authorized_keys"
+else
+  echo "  (sin ssh-authorized_keys en 1Password: el acceso por SSH desde nucleus habra que darlo a mano)"
+fi
 echo "  test github:"; ssh -o StrictHostKeyChecking=accept-new -T git@github-nhernandez 2>&1 | head -1 || true
 
-say "5/6  Clonando dotfiles + install --full"
+say "5/7  Clonando dotfiles + install --full"
 mkdir -p "$HOME/repos/naguer"
 # usar el alias github-nhernandez (del ~/.ssh/config restaurado) para forzar la key
 # personal: con 'git@github.com' pelado + 4 cuentas, GitHub da 404 en el repo privado.
@@ -81,8 +90,13 @@ mkdir -p "$HOME/repos/naguer"
 cd "$HOME/repos/naguer/bootstrap"
 bash install.sh --full
 
-say "6/6  Restaurando .env de los jobs"
+say "6/7  Restaurando .env de los jobs"
 bash restore-env.sh || true
+
+say "7/7  Aislamiento por job (.envrc + kubeconfig + azure dirs)"
+# Step 0 de cualquier job: sin esto cada repo resuelve al contexto cloud que tuviera el shell
+# padre, que en la practica es el de otro cliente.
+bash restore-job-isolation.sh || true
 
 say "Verificacion final"
 command -v starship >/dev/null 2>&1 && echo "  ok: starship (prompt)"      || echo "  FALTA: starship"
@@ -92,6 +106,20 @@ command -v gh       >/dev/null 2>&1 && echo "  ok: gh"                        ||
 ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -T git@github-nhernandez 2>&1 | grep -q "successfully authenticated" \
                                     && echo "  ok: github ssh"                || echo "  revisar: github ssh"
 [ -d "$HOME/repos/naguer/second-brain" ] && echo "  ok: repos clonados"       || echo "  FALTA: repos"
-echo "  PENDIENTE MANUAL: instalar pCloud (pcloud.com)"
+[ -d "/Applications/Tailscale.app" ]      && echo "  ok: tailscale (app)"            || echo "  FALTA: tailscale"
+command -v direnv >/dev/null 2>&1        && echo "  ok: direnv"                      || echo "  FALTA: direnv"
+[ -f "$HOME/.aws/config" ]               && echo "  ok: ~/.aws/config"               || echo "  FALTA: ~/.aws/config (copiar de otra maquina)"
+[ -s "$HOME/.ssh/authorized_keys" ]      && echo "  ok: authorized_keys"             || echo "  revisar: authorized_keys (nadie puede entrar por SSH)"
+command -v check-job-isolation >/dev/null 2>&1 && { check-job-isolation >/dev/null 2>&1 \
+  && echo "  ok: aislamiento por job" || echo "  revisar: check-job-isolation falla"; }
+if command -v systemsetup >/dev/null 2>&1 && systemsetup -getremotelogin 2>/dev/null | grep -qi on; then
+  echo "  ok: Remote Login (SSH)"
+else
+  echo "  PENDIENTE MANUAL: Remote Login -> Ajustes > General > Compartir > Sesion remota"
+  echo "                    (o: sudo systemsetup -setremotelogin on)"
+fi
+echo "  PENDIENTE MANUAL: login de Tailscale desde el icono de la barra (la CLI sola no conecta)"
+echo "  PENDIENTE MANUAL: instalar pCloud (pcloud.com) + aprobar macFUSE y reiniciar"
+echo "  PENDIENTE MANUAL: repos de jobs -> bash ~/repos/naguer/bootstrap/restore-jobs.sh (necesita rclone con remote pcloud)"
 
 say "LISTO. Reinicia la terminal (exec zsh)."

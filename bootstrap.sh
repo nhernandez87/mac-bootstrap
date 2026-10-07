@@ -30,11 +30,37 @@ MSG
 read -r _ </dev/tty
 
 say "4/6  Restaurando SSH keys desde 1Password"
+# `op` autentica de dos formas y las dos fallan distinto:
+#  - integracion con la app (Settings > Developer): funciona en cualquier shell, es la buena.
+#  - `op account add` + `op signin`: la sesion vive en una VARIABLE DE ENTORNO del shell que
+#    la creo. Correr el signin a mano y despues `bash bootstrap.sh` NO sirve: el script es
+#    otro proceso y no hereda nada. Por eso el signin tiene que pasar ACA adentro.
+# Sin esto, `op document list` abria un prompt interactivo ("add an account manually?") que
+# dejaba el script colgado esperando una respuesta que nadie habia pedido (visto 2026-10-07).
+if ! op whoami >/dev/null 2>&1; then
+  if op account list 2>/dev/null | grep -q .; then
+    echo "  cuenta encontrada, firmando (pide tu master password o Touch ID)"
+    eval "$(op signin --raw >/tmp/.op_tok 2>/dev/null && echo export OP_SESSION_my=$(cat /tmp/.op_tok))" 2>/dev/null || true
+    rm -f /tmp/.op_tok
+  fi
+fi
+if ! op whoami >/dev/null 2>&1; then
+  cat <<'MSG'
+  op no puede autenticar todavia. La via corta:
+    1. Abri 1Password y logueate (email + Secret Key + master password)
+    2. Settings > Developer > "Integrate with 1Password CLI"  (y el SSH Agent)
+    3. Volve a correr: bash ~/bootstrap.sh
+  Comprobalo con: op whoami
+MSG
+  exit 1
+fi
 if [ -f "$HOME/.ssh/github-nhernandez" ] && [ -f "$HOME/.ssh/config" ]; then
   echo "  ya restauradas, skip"
 else
   mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
-  op document list --vault Private 2>/dev/null | awk 'NR>1 && $2 ~ /^ssh-/ {print $2}' | while read -r doc; do
+  op document list --vault Private --format=json 2>/dev/null \
+    | python3 -c 'import json,sys; [print(i["title"]) for i in json.load(sys.stdin) if i.get("title","").startswith("ssh-")]' \
+    | while read -r doc; do
     name="${doc#ssh-}"
     if [ "$name" = "config" ]; then out="$HOME/.ssh/config"; else out="$HOME/.ssh/$name"; fi
     op document get "$doc" --vault Private --out-file "$out" --force

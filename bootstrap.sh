@@ -102,6 +102,8 @@ say "Verificacion final"
 command -v starship >/dev/null 2>&1 && echo "  ok: starship (prompt)"      || echo "  FALTA: starship"
 command -v op       >/dev/null 2>&1 && echo "  ok: op (1password cli)"      || echo "  FALTA: op"
 command -v gh       >/dev/null 2>&1 && echo "  ok: gh"                        || echo "  FALTA: gh"
+{ command -v claude >/dev/null 2>&1 || [ -x "$HOME/.local/bin/claude" ]; } \
+                                    && echo "  ok: claude code"               || echo "  FALTA: claude code"
 [ -d "$HOME/.oh-my-zsh" ]           && echo "  ok: oh-my-zsh"                 || echo "  FALTA: oh-my-zsh"
 ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -T git@github-nhernandez 2>&1 | grep -q "successfully authenticated" \
                                     && echo "  ok: github ssh"                || echo "  revisar: github ssh"
